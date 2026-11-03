@@ -352,6 +352,111 @@
     .result-score span { color: var(--muted); font-size: .38em; letter-spacing: 0; }
     .result-copy { margin-bottom: 28px; }
 
+    .result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .review-button, .back-button {
+      display: inline-flex;
+      min-height: 52px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 22px;
+      border: 1px solid rgba(218, 214, 255, .24);
+      border-radius: 15px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .06);
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .review-button:hover, .back-button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(192, 170, 255, .72);
+      background: rgba(166, 138, 255, .13);
+    }
+
+    .review-list {
+      display: grid;
+      max-height: min(52vh, 500px);
+      gap: 12px;
+      overflow-y: auto;
+      margin: 24px 0;
+      padding: 2px 6px 2px 2px;
+      overscroll-behavior: contain;
+    }
+
+    .review-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .review-filter {
+      min-height: 48px;
+      flex: 1 1 160px;
+      padding: 8px 16px;
+      border: 1px solid rgba(218, 214, 255, .24);
+      border-radius: 14px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .06);
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    .review-filter[aria-pressed="true"] {
+      border-color: rgba(120, 240, 203, .72);
+      color: var(--mint);
+      background: rgba(58, 191, 153, .13);
+    }
+
+    .review-list:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+
+    .review-empty {
+      margin: 24px 0;
+      padding: 22px 16px;
+      border: 1px solid rgba(120, 240, 203, .3);
+      border-radius: 15px;
+      color: var(--mint);
+      background: rgba(58, 191, 153, .08);
+      line-height: 1.6;
+    }
+
+    .review-item {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .review-question {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .review-answer {
+      margin: 9px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .review-answer strong { color: var(--ink); }
+    .review-answer.is-correct strong { color: var(--mint); }
+    .review-answer.is-incorrect strong { color: #ff9daa; }
+    .review-answer[hidden] { display: none; }
+
+    .review-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
     .sr-only {
       position: absolute;
       width: 1px;
@@ -448,7 +553,27 @@
       <h2 class="question-title" id="results-title" tabindex="-1">멋진 우주 여행이었어요!</h2>
       <p class="result-score" id="result-score"></p>
       <p class="result-copy" id="result-copy"></p>
-      <button class="restart-button" id="restart-button" type="button">다시 도전하기 <span aria-hidden="true">↻</span></button>
+      <div class="result-actions">
+        <button class="review-button" id="review-button" type="button">내 답변 확인 <span aria-hidden="true">→</span></button>
+        <button class="restart-button" id="restart-button" type="button">다시 도전하기 <span aria-hidden="true">↻</span></button>
+      </div>
+    </section>
+
+    <section class="card" id="review" aria-labelledby="review-title" hidden>
+      <p class="eyebrow">퀴즈 돌아보기</p>
+      <h2 class="question-title" id="review-title" tabindex="-1">내가 고른 답과 정답</h2>
+      <p class="intro">각 문제에서 선택한 답과 정답을 확인해 보세요.</p>
+      <div class="review-filters" role="group" aria-label="답안 표시 필터">
+        <button class="review-filter" id="show-all-answers" type="button" aria-pressed="true">모든 문제</button>
+        <button class="review-filter" id="show-incorrect-answers" type="button" aria-pressed="false">틀린 문제만</button>
+      </div>
+      <p class="sr-only" id="review-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <ol class="review-list" id="review-list" aria-label="문제별 선택 답안과 정답" tabindex="0"></ol>
+      <p class="review-empty" id="review-empty" hidden>모든 답을 맞혔어요! 틀린 문제가 없습니다.</p>
+      <div class="review-actions">
+        <button class="back-button" id="back-to-results-button" type="button">결과로 돌아가기</button>
+        <button class="restart-button" id="review-restart-button" type="button">다시 도전하기 <span aria-hidden="true">↻</span></button>
+      </div>
     </section>
   </main>
 
@@ -529,8 +654,16 @@
     const welcome = document.getElementById("welcome");
     const quiz = document.getElementById("quiz");
     const results = document.getElementById("results");
+    const review = document.getElementById("review");
     const startButton = document.getElementById("start-button");
     const restartButton = document.getElementById("restart-button");
+    const reviewButton = document.getElementById("review-button");
+    const backToResultsButton = document.getElementById("back-to-results-button");
+    const reviewRestartButton = document.getElementById("review-restart-button");
+    const reviewList = document.getElementById("review-list");
+    const reviewEmpty = document.getElementById("review-empty");
+    const reviewStatus = document.getElementById("review-status");
+    const reviewFilterButtons = [...document.querySelectorAll(".review-filter")];
     const nextButton = document.getElementById("next-button");
     const questionCount = document.getElementById("question-count");
     const scoreDisplay = document.getElementById("score");
@@ -547,11 +680,14 @@
     let questionIndex = 0;
     let score = 0;
     let hasAnswered = false;
+    let selectedAnswers = [];
+    let reviewFilter = "all";
 
     function showScreen(screen) {
       welcome.hidden = screen !== "welcome";
       quiz.hidden = screen !== "quiz";
       results.hidden = screen !== "results";
+      review.hidden = screen !== "review";
     }
 
     function renderQuestion() {
@@ -588,6 +724,7 @@
       if (hasAnswered) return;
       hasAnswered = true;
       const question = questions[questionIndex];
+      selectedAnswers[questionIndex] = selectedIndex;
       const answerButtons = [...answersContainer.querySelectorAll(".answer")];
       answerButtons.forEach(button => { button.disabled = true; });
 
@@ -644,15 +781,90 @@
       document.getElementById("results-title").focus();
     }
 
+    function renderReview() {
+      reviewList.replaceChildren();
+      const missedQuestions = questions
+        .map((question, index) => ({ question, index }))
+        .filter(({ question, index }) => selectedAnswers[index] !== question.answer);
+      const visibleQuestions = reviewFilter === "incorrect"
+        ? missedQuestions
+        : questions.map((question, index) => ({ question, index }));
+
+      visibleQuestions.forEach(({ question, index }) => {
+        const selectedIndex = selectedAnswers[index];
+        const item = document.createElement("li");
+        item.className = "review-item";
+
+        const prompt = document.createElement("h3");
+        prompt.className = "review-question";
+        prompt.textContent = `${index + 1}. ${question.prompt}`;
+        item.append(prompt);
+
+        const selectedAnswer = document.createElement("p");
+        selectedAnswer.className = `review-answer ${selectedIndex === question.answer ? "is-correct" : "is-incorrect"}`;
+        const selectedLabel = document.createElement("strong");
+        selectedLabel.textContent = selectedIndex === question.answer ? "내가 고른 답 (정답): " : "내가 고른 답: ";
+        selectedAnswer.append(selectedLabel, document.createTextNode(question.options[selectedIndex]));
+        item.append(selectedAnswer);
+
+        const correctAnswer = document.createElement("p");
+        correctAnswer.className = "review-answer is-correct";
+        const correctLabel = document.createElement("strong");
+        correctLabel.textContent = "정답: ";
+        correctAnswer.append(correctLabel, document.createTextNode(question.options[question.answer]));
+        item.append(correctAnswer);
+
+        reviewList.append(item);
+      });
+
+      const isEmpty = reviewFilter === "incorrect" && missedQuestions.length === 0;
+      reviewList.hidden = isEmpty;
+      reviewEmpty.hidden = !isEmpty;
+      reviewFilterButtons.forEach(button => {
+        button.setAttribute("aria-pressed", String(
+          button.id === (reviewFilter === "all" ? "show-all-answers" : "show-incorrect-answers")
+        ));
+      });
+
+      if (isEmpty) {
+        reviewStatus.textContent = "모든 답을 맞혔어요. 틀린 문제가 없습니다.";
+      } else {
+        const count = visibleQuestions.length;
+        reviewStatus.textContent = reviewFilter === "all"
+          ? `전체 ${count}개 문제를 표시합니다.`
+          : `틀린 답변 ${count}개를 표시합니다.`;
+      }
+    }
+
+    function showReview() {
+      reviewFilter = "all";
+      renderReview();
+      showScreen("review");
+      document.getElementById("review-title").focus();
+    }
+
     function startQuiz() {
       questionIndex = 0;
       score = 0;
+      selectedAnswers = [];
       showScreen("quiz");
       renderQuestion();
     }
 
     startButton.addEventListener("click", startQuiz);
     restartButton.addEventListener("click", startQuiz);
+    reviewRestartButton.addEventListener("click", startQuiz);
+    reviewButton.addEventListener("click", showReview);
+    reviewFilterButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        reviewFilter = button.id === "show-incorrect-answers" ? "incorrect" : "all";
+        renderReview();
+      });
+    });
+    backToResultsButton.addEventListener("click", () => {
+      showScreen("results");
+      document.getElementById("results-title").focus();
+    });
     nextButton.addEventListener("click", () => {
       if (questionIndex === questions.length - 1) {
         showResults();
